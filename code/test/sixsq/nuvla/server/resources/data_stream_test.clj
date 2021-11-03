@@ -1,0 +1,11 @@
+(ns sixsq.nuvla.server.resources.data-stream-test
+    (:require
+    [clojure.test :refer [deftest is]]
+    [sixsq.nuvla.server.resources.data-stream :as t]))
+
+
+(deftest test-valid-attribute-name
+  (is (t/valid-key-prefix? #{"schema-org"} "a1"))
+  (is (not (t/valid-key-prefix? #{"schema-org"} "schema-xxx:a1")))
+  (is (not (t/valid-key-prefix? #{} "schema-xxx:a1")))
+  (is (t/valid-key-prefix? #{"schema-org"} "schema-org:a1")))

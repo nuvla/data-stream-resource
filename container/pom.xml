@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>container-data-stream-dep</artifactId>
+  <packaging>pom</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>server/container</name>
+  <url>http://sixsq.com</url>
+
+  <parent>
+    <groupId>sixsq.nuvla.server</groupId>
+    <artifactId>data-stream</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <properties>
+    <image-name>api-private-dev</image-name>
+  </properties>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <dependencies>
+    <dependency>
+      <groupId>sixsq.nuvla.server</groupId>
+      <artifactId>data-stream-dep</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+    </dependency>
+    <dependency>
+      <groupId>sixsq.nuvla.server</groupId>
+      <artifactId>data-stream-jar</artifactId>
+      <version>${project.version}</version>
+      <type>jar</type>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <profile>
+      <id>default BRANCH value</id>
+      <activation>
+        <property>
+          <name>!env.BRANCH</name>
+        </property>
+      </activation>
+      <properties>
+        <env.BRANCH></env.BRANCH>
+      </properties>
+    </profile>
+    <profile>
+      <id>default PULL_REQUEST_BRANCH value</id>
+      <activation>
+        <property>
+          <name>!env.PULL_REQUEST_BRANCH</name>
+        </property>
+      </activation>
+      <properties>
+        <env.PULL_REQUEST_BRANCH></env.PULL_REQUEST_BRANCH>
+      </properties>
+    </profile>
+  </profiles>
+
+  <build>
+    <plugins>
+
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <id>git-information</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+            <phase>validate</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <dotGitDirectory>${project.basedir}/../.git</dotGitDirectory>
+          <prefix>git</prefix>
+          <verbose>true</verbose>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <generateGitPropertiesFilename>${project.build.directory}/git.properties</generateGitPropertiesFilename>
+          <format>properties</format>
+          <skipPoms>false</skipPoms>
+          <gitDescribe>
+            <skip>false</skip>
+            <always>false</always>
+            <dirty>-dirty</dirty>
+          </gitDescribe>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <id>recover true branch name</id>
+            <goals>
+              <goal>regex-property</goal>
+            </goals>
+            <configuration>
+              <name>git.branch.selected</name>
+              <value>${env.PULL_REQUEST_BRANCH}%${env.BRANCH}%${git.branch}</value>
+              <regex>^%*([^%]+).*$</regex>
+              <replacement>$1</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+            </configuration>
+          </execution>
+          <execution>
+            <id>convert branch name to valid docker repository name</id>
+            <goals>
+              <goal>regex-property</goal>
+            </goals>
+            <configuration>
+              <name>git.branch.sanitized</name>
+              <value>${git.branch.selected}</value>
+              <regex>[^a-z0-9\._-]</regex>
+              <replacement>-</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+            </configuration>
+          </execution>
+          <execution>
+            <id>set docker tag property</id>
+            <goals>
+              <goal>regex-property</goal>
+            </goals>
+            <configuration>
+              <name>docker-tag</name>
+              <value>${project.version}</value>
+              <regex>^.*SNAPSHOT$</regex>
+              <replacement>${git.branch.sanitized}</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+            </configuration>
+          </execution>
+          <execution>
+            <id>set docker repo property</id>
+            <goals>
+              <goal>regex-property</goal>
+            </goals>
+            <configuration>
+              <name>docker-repo</name>
+              <value>${project.version} data-stream-dev data-stream</value>
+              <regex>(?=.*SNAPSHOT).*(data-stream-dev).*|.*(data-stream).*</regex>
+              <replacement>$1$2</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/dependency/lib</outputDirectory>
+              <prependGroupIds>true</prependGroupIds>
+              <stripVersion>false</stripVersion>
+              <stripClassifier>true</stripClassifier>
+              <excludeTypes>pom</excludeTypes>
+              <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>com.spotify</groupId>
+        <artifactId>dockerfile-maven-plugin</artifactId>
+        <version>1.4.10</version>
+        <executions>
+          <execution>
+            <id>default</id>
+            <goals>
+              <goal>build</goal>
+              <goal>push</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <repository>docker.io/sixsq/${docker-repo}</repository>
+          <tag>${docker-tag}</tag>
+          <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
+          <buildArgs>
+            <GIT_BRANCH>${git.branch.selected}</GIT_BRANCH>
+            <GIT_COMMIT_ID>${git.commit.id}</GIT_COMMIT_ID>
+            <GIT_DIRTY>${git.dirty}</GIT_DIRTY>
+            <GIT_BUILD_TIME>${git.build.time}</GIT_BUILD_TIME>
+            <BUILD_NUMBER>${env.BUILD_NUMBER}</BUILD_NUMBER>
+            <BUILD_WEB_URL>${env.BUILD_WEB_URL}</BUILD_WEB_URL>
+          </buildArgs>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+</project>
