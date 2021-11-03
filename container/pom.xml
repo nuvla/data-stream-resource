@@ -149,8 +149,8 @@
             </goals>
             <configuration>
               <name>docker-repo</name>
-              <value>${project.version} data-stream-dev data-stream</value>
-              <regex>(?=.*SNAPSHOT).*(data-stream-dev).*|.*(data-stream).*</regex>
+              <value>${project.version} nuvladev nuvla</value>
+              <regex>(?=.*SNAPSHOT).*(nuvladev).*|.*(nuvla).*</regex>
               <replacement>$1$2</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
@@ -194,7 +194,7 @@
           </execution>
         </executions>
         <configuration>
-          <repository>docker.io/sixsq/${docker-repo}</repository>
+          <repository>docker.io/${docker-repo}/data-stream</repository>
           <tag>${docker-tag}</tag>
           <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
           <buildArgs>
