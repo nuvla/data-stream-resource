@@ -11,36 +11,35 @@
 
 
 (deftest check-data-stream
-  (let [timestamp   "1964-08-25T10:00:00.00Z"
-
-        location    [6.143158 46.204391 373.0]
+  (let [timestamp   "1972-10-08T10:00:00.00Z"
 
         data-stream {:id                     (str data-stream-resource/resource-type "/uuid")
                      :resource-type          data-stream-resource/resource-type
                      :created                timestamp
                      :updated                timestamp
                      :acl                    valid-acl
-                     :infrastructure-service "infrastructure-service/my-service-uuid"
-                     :other                  "value"
 
-                     :content-type           "text/html; charset=utf-8"
+                     ;; mandatory
+                     :name                   "foo data"
+                     :device                 "nuvlabox/8c07d5d0-3d86-11ec-8b86-60f81dcabcfa"
+                     :data                   "some data"
                      :bytes                  10234
-                     :md5sum                 "abcde"
-                     :timestamp              timestamp
-                     :location               location
+                     :content-type           "text/html; charset=utf-8"
 
-                     :mount                  {:mount-type     "volume"
-                                              :target         "/mnt/bucket"
-                                              :volume-options {:o      "addr=127.0.0.1"
-                                                               :type   "nfs"
-                                                               :device ":/data/bucket"}}}]
+                     ;; optional
+                     :description            "bar data"
+                     :timestamp              timestamp
+                     :location               [6.143158 46.204391 373.0]
+                     :md5sum                 "abcde"
+
+                     :other                  "foo"}]
 
     (stu/is-valid ::data-stream/schema data-stream)
 
     ;; mandatory keywords
-    (doseq [k #{:created :updated :acl :infrastructure-service}]
+    (doseq [k #{:created :updated :acl :name :data :device :bytes :content-type}]
       (stu/is-invalid ::data-stream/schema (dissoc data-stream k)))
 
     ;; optional keywords
-    (doseq [k #{:other :content-type :bytes :md5sum :timestamp :location :mount}]
+    (doseq [k #{:other :md5sum :timestamp :location }]
       (stu/is-valid ::data-stream/schema (dissoc data-stream k)))))

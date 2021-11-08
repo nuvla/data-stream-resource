@@ -1,8 +1,6 @@
 (ns sixsq.nuvla.server.resources.data-stream
     "
-  The `data-stream` resource provides metadata for a particular data object.
-  (Although `data-stream` resources can also be used independently of a
-  `data-object`.)
+  The `data-stream` resource is the data and meta-data ingestion resource.
 
   The schema for the this resource is open, allowing any information to be
   associated with the data object. The only requirement is that keys must be
@@ -19,7 +17,9 @@
     [sixsq.nuvla.server.resources.common.utils :as u]
     [sixsq.nuvla.server.resources.data-record-key-prefix :as sn]
     [sixsq.nuvla.server.resources.resource-metadata :as md]
+    [sixsq.nuvla.server.resources.spec.acl-collection :as acl-collection]
     [sixsq.nuvla.server.resources.spec.data-stream :as data-stream]
+    [sixsq.nuvla.server.util.kafka :as ka]
     [sixsq.nuvla.server.util.metadata :as gen-md]
     [sixsq.nuvla.server.util.response :as sr]))
 
@@ -30,9 +30,7 @@
 (def ^:const collection-type (u/ns->collection-type *ns*))
 
 
-(def collection-acl {:query       ["group/nuvla-user"]
-                     :add         ["group/nuvla-user"]
-                     :bulk-delete ["group/nuvla-user"]})
+(def collection-acl {:add         ["group/nuvla-user"]})
 
 
 ;;
@@ -118,53 +116,64 @@
 ;; CRUD operations
 ;;
 
-(def add-impl (std-crud/add-fn resource-type collection-acl resource-type))
+(def validate-collection-acl (u/create-spec-validation-fn ::acl-collection/acl))
 
+
+(defn add-fn
+  [resource-name collection-acl resource-uri]
+  (validate-collection-acl collection-acl)
+  (fn [{:keys [body] :as request}]
+    (a/throw-cannot-add collection-acl request)
+    (let [id (u/new-resource-id resource-name)]
+      (ka/publish-async
+        resource-name
+        id
+        (-> body
+            u/strip-service-attrs
+            (assoc :id id)
+            (assoc :resource-type resource-uri)
+            u/update-timestamps
+            (u/set-created-by request)
+            (crud/add-acl request)
+            crud/validate))
+      (sr/response-created id))))
+
+
+(def add-impl (add-fn resource-type collection-acl resource-type))
 
 (defmethod crud/add resource-type
   [request]
   (add-impl request))
 
 
-(def retrieve-impl (std-crud/retrieve-fn resource-type))
+(defn- throw-method-not-allowed
+  []
+  (let [code     405
+        msg      "method not allowed"
+        response (-> {:status code :message msg}
+                     sr/json-response
+                     (r/status code))]
+    (throw (ex-info msg response))))
 
 
 (defmethod crud/retrieve resource-type
-  [request]
-  (retrieve-impl request))
-
-
-(def edit-impl (std-crud/edit-fn resource-type))
+  [_]
+  (throw-method-not-allowed))
 
 
 (defmethod crud/edit resource-type
-  [request]
-  (edit-impl request))
-
-
-(def delete-impl (std-crud/delete-fn resource-type))
+  [_]
+  (throw-method-not-allowed))
 
 
 (defmethod crud/delete resource-type
-  [request]
-  (delete-impl request))
-
-
-(def query-impl (std-crud/query-fn resource-type collection-acl collection-type))
+  [_]
+  (throw-method-not-allowed))
 
 
 (defmethod crud/query resource-type
-  [request]
-  (query-impl request))
-
-
-(def bulk-delete-impl (std-crud/bulk-delete-fn resource-type collection-acl collection-type))
-
-
-(defmethod crud/bulk-delete resource-type
-  [request]
-  (bulk-delete-impl request))
-
+  [_]
+  (throw-method-not-allowed))
 
 ;;
 ;; initialization
