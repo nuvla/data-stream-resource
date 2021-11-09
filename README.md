@@ -1,5 +1,7 @@
 # Data stream resource for Nuvla API server
 
+[![Build Status](https://github.com/nuvla/data-stream-resource/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/nuvla/data-stream-resource/actions/workflows/main.yml)
+
 This repository contains the code for data stream resource of Nuvla API
 server, packaged as a Docker container. Each time a release of 
 Nuvla API Server is done, this project should also be released
